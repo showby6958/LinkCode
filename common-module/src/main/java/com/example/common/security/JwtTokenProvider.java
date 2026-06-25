@@ -101,6 +101,19 @@ public class JwtTokenProvider {
                 .getPayload();
     }
 
+    public Date getExpiration(String token) {
+        return parse(token).getExpiration();
+    }
+
+    // 만료된 토큰에서도 userId 추출 (로그아웃 처리용)
+    public Long getUserIdIgnoreExpiry(String token) {
+        try {
+            return parse(token).get("userId", Long.class);
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().get("userId", Long.class);
+        }
+    }
+
     // 토큰 문자열의 유효성 검증
     public boolean validateToken(String token) {
         try {

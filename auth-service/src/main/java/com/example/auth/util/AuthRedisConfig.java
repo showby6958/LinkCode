@@ -1,13 +1,13 @@
 package com.example.auth.util;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
-@AutoConfigureAfter
+@Configuration
 @RequiredArgsConstructor
 public class AuthRedisConfig {
 
