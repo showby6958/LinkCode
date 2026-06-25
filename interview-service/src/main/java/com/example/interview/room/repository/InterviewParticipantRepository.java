@@ -13,4 +13,6 @@ public interface InterviewParticipantRepository extends JpaRepository<InterviewP
     List<InterviewParticipant> findAllByRoomId(Long roomId);
 
     boolean existsByRoomIdAndUserId(Long roomId, Long userId);
+
+    List<InterviewParticipant> findAllByUserId(Long userId);
 }

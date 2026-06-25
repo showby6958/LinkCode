@@ -3,6 +3,8 @@ package com.example.interview.room.controller;
 import com.example.common.security.CustomPrincipal;
 import com.example.interview.room.dto.*;
 import com.example.interview.room.service.InterviewRoomService;
+
+import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +58,14 @@ public class InterviewRoomController {
         InterviewRoomInfo info = interviewRoomService.getRoomInfo(roomId, user.getUserId());
 
         return ResponseEntity.ok(info);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<MyRoomResponse>> getMyRooms(
+            @AuthenticationPrincipal CustomPrincipal user
+    ) {
+        List<MyRoomResponse> rooms = interviewRoomService.getMyRooms(user.getUserId());
+        return ResponseEntity.ok(rooms);
     }
 
 }

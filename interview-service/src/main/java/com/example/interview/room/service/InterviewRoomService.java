@@ -5,6 +5,7 @@ import com.example.interview.interviewDocument.repository.InterviewDocumentRepos
 import com.example.interview.room.domain.*;
 import com.example.interview.room.dto.InterviewRoomInfo;
 import com.example.interview.room.dto.JoinInterviewRoomResponse;
+import com.example.interview.room.dto.MyRoomResponse;
 import com.example.interview.room.repository.InterviewParticipantRepository;
 import com.example.interview.room.dto.CreateInterviewRoomRequest;
 import com.example.interview.room.dto.CreateInterviewRoomResponse;
@@ -18,7 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -131,6 +136,33 @@ public class InterviewRoomService {
                 .orElse(null);
 
         return new InterviewRoomInfo(room.getId(), documentId, room.getStatus(), room.getProblemContent());
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyRoomResponse> getMyRooms(Long userId) {
+        List<InterviewParticipant> participants = participantRepository.findAllByUserId(userId);
+
+        if (participants.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> roomIds = participants.stream()
+                .map(InterviewParticipant::getRoomId)
+                .toList();
+
+        Map<Long, ParticipantRole> roleByRoomId = participants.stream()
+                .collect(Collectors.toMap(InterviewParticipant::getRoomId, InterviewParticipant::getRole));
+
+        return interviewRoomRepository.findAllById(roomIds).stream()
+                .map(room -> new MyRoomResponse(
+                        room.getId(),
+                        room.getTitle(),
+                        room.getStatus(),
+                        roleByRoomId.get(room.getId()),
+                        room.getCreatedAt()
+                ))
+                .sorted(Comparator.comparing(MyRoomResponse::getCreatedAt).reversed())
+                .toList();
     }
 
 }
