@@ -9,23 +9,21 @@ import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
 
-    // 메모리 상에서 방별로 연결된 웹소켓 세션들을 관리 (Concurrent HashMap 사용)
-    private final Map<Long, Set<WebSocketSession>> roomSessions = new ConcurrentHashMap<>();
+    // 방ID -> (세션ID -> 세션) : 세션은 ConcurrentWebSocketSessionDecorator로 감싸서 저장
+    private final Map<Long, Map<String, WebSocketSession>> roomSessions = new ConcurrentHashMap<>();
 
     // Y.js 바이너리, 평문 Snapshot을 임시 저장할 RedisTemplate
     private final RedisTemplate<String, byte[]> codeSyncRedisTemplate;
@@ -38,8 +36,14 @@ public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long roomId = getRoomId(session);
 
-        // 방에 해당하는 세션 리스트가 없으면 새로 생성하고 세션 추가
-        roomSessions.computeIfAbsent(roomId, k -> new CopyOnWriteArraySet<>()).add(session);
+        // Tomcat/Jakarta WebSocket 세션은 동시에 여러 스레드가 sendMessage()를 호출하는 것을 허용하지 않는다.
+        // 동시 접속자가 3명 이상이 되면 브로드캐스트 스레드끼리 같은 세션에 동시 write가 몰려
+        // "IllegalStateException: BINARY_PARTIAL_WRITING" 으로 세션이 강제 종료되는 문제가 있었음.
+        // ConcurrentWebSocketSessionDecorator가 내부 큐로 전송을 직렬화해 이 문제를 막아준다.
+        WebSocketSession safeSession = new ConcurrentWebSocketSessionDecorator(session, 10_000, 512 * 1024);
+
+        // 방에 해당하는 세션 맵이 없으면 새로 생성하고 세션 추가
+        roomSessions.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(session.getId(), safeSession);
         log.info("[WebSocket] 유저 입장 - RoomID: {}, SessionID: {}", roomId, session.getId());
 
         String redisListKey = REDIS_KEY_PREFIX + roomId + ":yjs";
@@ -51,8 +55,8 @@ public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
         if (deltaList != null && !deltaList.isEmpty()) {
             // CASE 1: 중간 진입 유저 혹은 새로고침 유저 -> 기존 바이너리들을 순서대로 전송
             for (byte[] delta : deltaList) {
-                if (session.isOpen()) {
-                    session.sendMessage(new BinaryMessage(ByteBuffer.wrap(delta)));
+                if (safeSession.isOpen()) {
+                    safeSession.sendMessage(new BinaryMessage(ByteBuffer.wrap(delta)));
                 }
             }
 
@@ -73,11 +77,11 @@ public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
         payload.get(deltaBytes);
 
         // 1. 나를 제외한 같은 방의 모든 유저에게 바이너리 데이터 브로드캐스트
-        broadcastToRoom(roomId, session, deltaBytes);
-        
+        broadcastToRoom(roomId, session.getId(), deltaBytes);
+
         // 2. Redis List에 Y.js 바이너리 조각을 계속 누적 업데이트
         String redisListKey = REDIS_KEY_PREFIX + roomId + ":yjs";
-        
+
         // 간단한 구현을 위해 수신한 델타 조각을 Redis 레코드 뒤에 이어 붙이는(Append) 전략 사용
         codeSyncRedisTemplate.opsForList().rightPush(redisListKey, deltaBytes);
     }
@@ -86,9 +90,9 @@ public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         Long roomId = getRoomId(session);
-        Set<WebSocketSession> sessions = roomSessions.get(roomId);
+        Map<String, WebSocketSession> sessions = roomSessions.get(roomId);
         if (sessions != null) {
-            sessions.remove(session);
+            sessions.remove(session.getId());
             if (sessions.isEmpty()) {
                 roomSessions.remove(roomId);
             }
@@ -97,19 +101,22 @@ public class CodeSyncWebSocketHandler extends BinaryWebSocketHandler {
     }
 
     // ** 같은 방 유저들에게 데이터를 뿌리는 헬퍼 메서드 **
-    private void broadcastToRoom(Long roomId, WebSocketSession senderSession, byte[] data) {
-        Set<WebSocketSession> sessions = roomSessions.get(roomId);
+    private void broadcastToRoom(Long roomId, String senderSessionId, byte[] data) {
+        Map<String, WebSocketSession> sessions = roomSessions.get(roomId);
         if (sessions == null) return;
 
         BinaryMessage binaryMessage = new BinaryMessage(ByteBuffer.wrap(data));
 
-        for (WebSocketSession session : sessions) {
+        for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
             // 본인을 제외한 다른 연결된 세션에만 메시지 발송
-            if (session.isOpen() && !session.getId().equals(senderSession.getId())) {
+            if (entry.getKey().equals(senderSessionId)) continue;
+
+            WebSocketSession target = entry.getValue();
+            if (target.isOpen()) {
                 try {
-                    session.sendMessage(binaryMessage);
+                    target.sendMessage(binaryMessage);
                 } catch (IOException e) {
-                    log.error("[WebSocket] 브로드캐스트 실패 - SessionID: {}", session.getId());
+                    log.error("[WebSocket] 브로드캐스트 실패 - SessionID: {}", entry.getKey());
                 }
             }
         }
