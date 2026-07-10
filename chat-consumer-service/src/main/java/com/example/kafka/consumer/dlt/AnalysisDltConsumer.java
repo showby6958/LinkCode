@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 public class AnalysisDltConsumer {
 
     @KafkaListener(
-            topics = "interview_analysis-dlt",
+            topics = "interview-analysis-dlt",
             groupId = "analysis-dlt-group"
     )
     public void consume(String payload) {
