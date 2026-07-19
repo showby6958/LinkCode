@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // JWKS는 공개키만 담고 있고, 게이트웨이가 토큰 없이 호출하므로 열어둔다.
+                        .requestMatchers("/oauth/.well-known/**").permitAll()
                         .requestMatchers("/oauth/me", "/oauth/reissue", "/oauth/logout", "/login/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )

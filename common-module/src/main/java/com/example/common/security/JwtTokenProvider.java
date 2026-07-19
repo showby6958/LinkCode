@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-@Component
+@Component("CommonTokenProvider")
 @Slf4j
 public class JwtTokenProvider {
 
