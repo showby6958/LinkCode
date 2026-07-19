@@ -13,6 +13,11 @@ allprojects {
 	}
 }
 
+ext {
+	// Spring Boot 3.5.x 에 대응하는 Spring Cloud 릴리스 트레인
+	springCloudVersion = '2025.0.0'
+}
+
 subprojects {
 	apply plugin: 'java'
 	apply plugin: 'java-library'
@@ -21,6 +26,12 @@ subprojects {
 
 	java {
 		toolchain { languageVersion = JavaLanguageVersion.of(17) }
+	}
+
+	dependencyManagement {
+		imports {
+			mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+		}
 	}
 
 	dependencies {

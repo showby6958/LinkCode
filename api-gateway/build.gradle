@@ -1,0 +1,15 @@
+dependencies {
+    // reactive(WebFlux) 게이트웨이.
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
+
+    // NimbusReactiveJwtDecoder(JWKS 조회·캐싱·kid 매칭·서명/만료 검증)만 쓴다.
+    //
+    // spring-boot-starter-oauth2-resource-server가 아니라 이 라이브러리를 직접
+    // 쓰는 이유: 스타터는 이 서비스를 '리소스 서버'로 자동 구성하려 하고,
+    // 그 과정에서 ServerHttpSecurity 빈을 요구해 기동이 실패한다.
+    // 우리는 요청 차단을 게이트웨이 전역 필터로 직접 하므로 디코더만 있으면 된다.
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
+}
+
+bootJar { enabled = true }
+jar { enabled = false }

@@ -1,5 +1,6 @@
 rootProject.name = 'message-send-producer'
 
+include 'api-gateway'
 include 'auth-service'
 include 'chat-consumer-service'
 include 'interview-service'
