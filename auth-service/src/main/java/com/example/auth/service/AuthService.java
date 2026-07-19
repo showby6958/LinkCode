@@ -2,8 +2,8 @@ package com.example.auth.service;
 
 import com.example.auth.domain.Member;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.security.JwtTokenProvider;
 import com.example.auth.security.JwtUtil;
-import com.example.common.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

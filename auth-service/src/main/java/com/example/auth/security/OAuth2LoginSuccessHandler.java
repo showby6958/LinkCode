@@ -1,8 +1,6 @@
 package com.example.auth.security;
 
-import com.example.auth.domain.UserRole;
 import com.example.auth.oauth.userinfo.CustomOAuth2User;
-import com.example.common.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
