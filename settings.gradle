@@ -1,7 +1,8 @@
 rootProject.name = 'message-send-producer'
 
 include 'auth-service'
-include 'chat-service'
+// chat-service: 이 저장소에 소스가 없어 제외한다.
+// (crdt-front는 chat-service를 호출하지 않으며, 이번 게이트웨이 전환 범위 밖)
 include 'chat-consumer-service'
 include 'common-module'
 include 'interview-service'
