@@ -1,15 +1,12 @@
 package com.example.auth.security;
 
 import com.example.auth.oauth.service.CustomOAuth2UserService;
-import com.example.common.security.JwtAuthenticationFilter;
-import jakarta.servlet.Filter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,7 +20,6 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler successHandler;
-    private final JwtAuthenticationFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -44,9 +40,10 @@ public class SecurityConfig {
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler(successHandler)
-                )
-                .addFilterBefore((Filter) jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
+                );
+        // 토큰 검증 필터를 두지 않는다. 요청의 신원 확인은 게이트웨이가 담당하고,
+        // 이 서비스는 게이트웨이가 넣어준 X-User-* 헤더를 읽는다(AuthController).
+        // oauth2Login은 로그인 처리에 필요하므로 SecurityConfig 자체는 유지한다.
 
         return http.build();
     }

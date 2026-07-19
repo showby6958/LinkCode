@@ -1,7 +1,6 @@
 package com.example.auth.controller;
 
 import com.example.auth.service.AuthService;
-import com.example.common.security.CustomPrincipal;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,10 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,19 +36,32 @@ public class AuthController {
     }
 
     // 2. 내 정보 조회
+    // 토큰 검증은 게이트웨이가 마쳤고, 그 결과가 X-User-* 헤더로 들어온다.
+    // 헤더가 없으면 = 게이트웨이가 유효한 토큰을 찾지 못한 요청이므로 401.
+    // 값은 한글 이름이 헤더(ASCII)에서 깨지지 않도록 Base64-URL로 인코딩되어 온다.
     @GetMapping("/me")
-    public ResponseEntity<?> getMe(@AuthenticationPrincipal CustomPrincipal principal) {
-        if (principal == null) {
+    public ResponseEntity<?> getMe(@RequestHeader(value = "X-User-Id", required = false) String userId,
+                                   @RequestHeader(value = "X-User-Name", required = false) String userName,
+                                   @RequestHeader(value = "X-User-Picture", required = false) String picture,
+                                   @RequestHeader(value = "X-User-Role", required = false) String role) {
+        if (userId == null || userId.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         Map<String, Object> result = new HashMap<>();
-        result.put("userId", principal.getUserId());
-        result.put("userName", principal.getUserName());
-        result.put("picture", principal.getPicture());
-        result.put("role", principal.getRole());
+        result.put("userId", Long.valueOf(decode(userId)));
+        result.put("userName", decode(userName));
+        result.put("picture", decode(picture));
+        result.put("role", decode(role));
 
         return ResponseEntity.ok(result);
+    }
+
+    private String decode(String encoded) {
+        if (encoded == null || encoded.isEmpty()) {
+            return "";
+        }
+        return new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
     }
 
     // 3. AccessToken 재발급

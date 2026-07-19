@@ -6,13 +6,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 @RequiredArgsConstructor
 public class AuthRedisConfig {
 
     private final RedisConnectionFactory connectionFactory;
-    private final RedisSerializer<String> stringRedisSerializer;
+    
+    @Bean
+    public RedisSerializer<String> stringRedisSerializer() {
+        return new StringRedisSerializer();
+    }
 
     // Auth -> <String, String>
     @Bean
@@ -22,8 +27,9 @@ public class AuthRedisConfig {
 
         template.setConnectionFactory(connectionFactory);
 
-        template.setKeySerializer(stringRedisSerializer);
-        template.setValueSerializer(stringRedisSerializer);
+        RedisSerializer<String> serializer = stringRedisSerializer();
+        template.setKeySerializer(serializer);
+        template.setValueSerializer(serializer);
 
         return template;
     }
