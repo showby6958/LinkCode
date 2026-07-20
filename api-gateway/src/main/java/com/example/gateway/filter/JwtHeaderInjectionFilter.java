@@ -4,6 +4,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpCookie;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -53,6 +54,7 @@ public class JwtHeaderInjectionFilter implements GlobalFilter, Ordered {
         this.jwtDecoder = jwtDecoder;
     }
 
+    // 모든 요청의 관문. 위조 헤더 제거 → 토큰 검증 → 역할 검사 → 헤더 주입/차단
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
@@ -67,9 +69,17 @@ public class JwtHeaderInjectionFilter implements GlobalFilter, Ordered {
             return isProtected(path) ? unauthorized(exchange) : forward(exchange, chain, stripped);
         }
 
-        // 2~4. 검증에 성공하면 헤더 주입, 실패하면 보호 경로만 401.
+        HttpMethod method = exchange.getRequest().getMethod();
+
+        // 2~4. 검증에 성공하면 역할 검사 후 헤더 주입, 실패하면 보호 경로만 401.
         return jwtDecoder.decode(token)
-                .flatMap(jwt -> forward(exchange, chain, withUserHeaders(stripped, jwt)))
+                .flatMap(jwt -> {
+                    // 경로별 역할 규칙 위반이면 403. (예: 면접방 생성은 ROLE_ADMIN만)
+                    if (!hasRequiredRole(method, path, claim(jwt, "role"))) {
+                        return forbidden(exchange);
+                    }
+                    return forward(exchange, chain, withUserHeaders(stripped, jwt));
+                })
                 .onErrorResume(e ->
                         isProtected(path) ? unauthorized(exchange) : forward(exchange, chain, stripped));
     }
@@ -79,6 +89,14 @@ public class JwtHeaderInjectionFilter implements GlobalFilter, Ordered {
         return path.startsWith("/api") || path.startsWith("/interview");
     }
 
+    /** 경로별 역할 규칙을 모두 만족하는가. 해당 규칙이 없으면 통과. */
+    private boolean hasRequiredRole(HttpMethod method, String path, String role) {
+        return RoleRule.RULES.stream()
+                .filter(rule -> rule.matches(method, path))
+                .allMatch(rule -> rule.requiredRole().equals(role));
+    }
+
+    // 검증된 토큰의 클레임을 X-User-* 헤더로 실어 하위 서비스로 넘길 요청을 만든다.
     private ServerHttpRequest withUserHeaders(ServerHttpRequest request, Jwt jwt) {
         return request.mutate()
                 .header(H_USER_ID, encode(claim(jwt, "userId")))
@@ -89,33 +107,44 @@ public class JwtHeaderInjectionFilter implements GlobalFilter, Ordered {
                 .build();
     }
 
+    // 가공한 요청으로 교체해 다음 필터·라우팅으로 흘려보낸다.
     private Mono<Void> forward(ServerWebExchange exchange, GatewayFilterChain chain, ServerHttpRequest request) {
         return chain.filter(exchange.mutate().request(request).build());
     }
 
+    // 인증 실패(토큰 없음/무효)로 응답을 401로 끝낸다.
     private Mono<Void> unauthorized(ServerWebExchange exchange) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         return exchange.getResponse().setComplete();
     }
 
+    // 인가 실패(권한 부족)로 응답을 403으로 끝낸다.
+    private Mono<Void> forbidden(ServerWebExchange exchange) {
+        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+        return exchange.getResponse().setComplete();
+    }
+
+    // accessToken 쿠키에서 토큰 문자열을 꺼낸다(없으면 null).
     private String resolveToken(ServerWebExchange exchange) {
         HttpCookie cookie = exchange.getRequest().getCookies().getFirst(ACCESS_TOKEN_COOKIE);
         return cookie != null ? cookie.getValue() : null;
     }
 
+    // 클레임 값을 문자열로 꺼낸다(없으면 빈 문자열).
     private String claim(Jwt jwt, String name) {
         Object value = jwt.getClaim(name);
         return value == null ? "" : String.valueOf(value);
     }
 
+    // 헤더 값을 Base64-URL로 인코딩한다(한글 등이 ASCII 헤더에서 깨지지 않도록).
     private String encode(String value) {
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
+    // 이 필터의 실행 우선순위를 정한다(라우팅보다 먼저여야 헤더 주입이 반영됨).
     @Override
     public int getOrder() {
-        // 라우팅보다 먼저 실행되어야 헤더 주입이 반영된다.
         return Ordered.HIGHEST_PRECEDENCE + 10;
     }
 }
