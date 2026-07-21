@@ -4,8 +4,3 @@ include 'api-gateway'
 include 'auth-service'
 include 'chat-consumer-service'
 include 'interview-service'
-
-// auth-service는 더 이상 사용하지 않는다. interview-service와
-// chat-consumer-service가 아직 의존하고 있어 남겨둔다.
-// 두 서비스의 전환이 끝나면 이 include와 디렉토리를 함께 제거한다.
-include 'common-module'

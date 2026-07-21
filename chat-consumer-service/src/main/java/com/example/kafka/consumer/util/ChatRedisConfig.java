@@ -1,6 +1,6 @@
 package com.example.kafka.consumer.util;
 
-import com.example.common.dto.ChatMessageDto;
+import com.example.kafka.dto.ChatMessageDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
