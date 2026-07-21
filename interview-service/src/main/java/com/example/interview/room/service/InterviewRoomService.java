@@ -14,9 +14,10 @@ import com.example.interview.room.util.InviteCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -125,8 +126,12 @@ public class InterviewRoomService {
     @Transactional(readOnly = true)
     public InterviewRoomInfo getRoomInfo(Long roomId, Long userId) {
 
+        // 방 멤버십 검증(비즈니스 규칙). 예전엔 스프링 시큐리티의 AccessDeniedException을
+        // 던져 403으로 변환됐는데, 시큐리티 의존을 제거하면서 표준 ResponseStatusException으로
+        // 바꿨다. 게이트웨이의 역할 검사와는 다른, 이 방에 속했는지를 보는 검사다.
         InterviewParticipant participant = participantRepository.findByRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new AccessDeniedException("이 면접방의 멤버가 아닙니다. 초대코드를 통해 입장하세요."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "이 면접방의 멤버가 아닙니다. 초대코드를 통해 입장하세요."));
 
         InterviewRoom room = interviewRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 파기된 방입니다. ID: " + roomId));

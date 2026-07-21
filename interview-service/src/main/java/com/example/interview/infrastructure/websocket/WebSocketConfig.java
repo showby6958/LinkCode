@@ -17,6 +17,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSoc
     private final JwtChannelInterceptor jwtChannelInterceptor;
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
     private final CodeSyncWebSocketHandler codeSyncWebSocketHandler;
+    // 헤더 기반 인증을 하도록 바뀌며 빈으로 승격돼 주입받는다.
+    private final WebSocketHandshakeInterceptor codeSyncHandshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -29,9 +31,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSoc
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
-                .addInterceptors(jwtHandshakeInterceptor) // WebSocket 연결 전에 interceptor에서 JWT 인증 처리하는 interceptor
-                .withSockJS();
+                .setAllowedOriginPatterns("*") // 핸드셰이크 Origin 검증(게이트웨이가 Origin을 그대로 전달)
+                .addInterceptors(jwtHandshakeInterceptor) // 게이트웨이 헤더를 읽어 사용자 정보를 세션에 저장
+                .withSockJS()
+                // SockJS는 /ws/info HTTP 폴백에 자체 CORS 헤더를 붙인다. 게이트웨이도
+                // 붙이므로 헤더가 2개가 되어 브라우저가 응답을 거부한다(연결 불가).
+                // CORS는 게이트웨이에 일임하고 여기서는 붙이지 않는다.
+                .setSuppressCors(true);
     }
 
     @Override

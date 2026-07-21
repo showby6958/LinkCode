@@ -1,106 +1,49 @@
 package com.example.interview.infrastructure.websocket;
 
-import com.example.common.security.CustomPrincipal;
-import com.example.common.security.JwtTokenProvider;
-import lombok.RequiredArgsConstructor;
+import com.example.interview.security.LoginUser;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Map;
 
-// STOMP native header의 "Authorization"을 읽어서 JWT 가져옴
-// (만약, JWT가 쿠키에 저장되어있으면 못가져옴 -> 그래서 HandshakeInterceptor 사용)
+/**
+ * STOMP CONNECT 시 세션에 실린 사용자 정보를 STOMP principal로 붙인다.
+ *
+ * <p>JWT 파싱은 하지 않는다. 핸드셰이크 때 {@link JwtHandshakeInterceptor}가
+ * 게이트웨이 헤더에서 만든 {@link LoginUser}를 세션 attributes에 담아 두었고,
+ * 여기서는 그것을 꺼내 principal로 세팅할 뿐이다. LoginUser가 Principal을
+ * 구현하므로 스프링 시큐리티 Authentication으로 감싸지 않는다.
+ *
+ * <p>이후 STOMP 컨트롤러는 이 principal로 "누가 보낸 메시지인지"를 안다.
+ */
 @Component
-@RequiredArgsConstructor
 public class JwtChannelInterceptor implements ChannelInterceptor {
-
-    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(
-                message,
-                StompHeaderAccessor.class
-        );
+        StompHeaderAccessor accessor =
+                MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor == null) {
+        if (accessor == null || StompCommand.CONNECT != accessor.getCommand()) {
             return message;
         }
 
-        if (StompCommand.CONNECT == accessor.getCommand()) {
-            String token = resolveToken(accessor);
-
-            if (!StringUtils.hasText(token)) {
-                throw new IllegalArgumentException("Authorization token is missing.");
-            }
-
-            if (!jwtTokenProvider.validateToken(token)) {
-                throw new IllegalArgumentException("Invalid authorization token.");
-            }
-
-            String tokenType = jwtTokenProvider.parse(token).get("type", String.class);
-            if (!"access".equals(tokenType)) {
-                throw new IllegalArgumentException("Only access token is allowed.");
-            }
-
-            Long userId = jwtTokenProvider.getUserId(token);
-            String email = jwtTokenProvider.getEmail(token);
-            String userName = jwtTokenProvider.getUserName(token);
-            String picture = jwtTokenProvider.getPicture(token);
-            String role = jwtTokenProvider.getRole(token);
-
-            // CustomPrincipal에 유저 정보 저장
-            CustomPrincipal principal = new CustomPrincipal(
-                    userId,
-                    email,
-                    userName,
-                    picture,
-                    role
-            );
-
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    principal,
-                    null,
-                    List.of(new SimpleGrantedAuthority(role))
-            );
-
-            accessor.setUser(authentication);
-        }
-
-        return message;
-    }
-
-    // ChannelInterceptor에서 header 먼저 보고, 없으면 session attribute 확인
-    private String resolveToken(StompHeaderAccessor accessor) {
-        String authorizationHeader = accessor.getFirstNativeHeader("Authorization");
-
-        // Authorization header로 보낸 JWT
-        if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
-            return authorizationHeader.substring(7);
-        }
-
         Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+        Object attr = sessionAttributes == null
+                ? null
+                : sessionAttributes.get(JwtHandshakeInterceptor.LOGIN_USER_ATTR);
 
-        if (sessionAttributes == null) {
-            return null;
+        // 핸드셰이크에서 이미 헤더를 검사해 거부했으므로 정상 흐름에선 항상 존재한다.
+        if (!(attr instanceof LoginUser user)) {
+            throw new IllegalStateException("인증 정보가 없는 STOMP 연결입니다.");
         }
 
-        // 쿠키 accessToken에 저장된 JWT
-        Object token = sessionAttributes.get("accessToken");
-
-        if (token instanceof String accessToken && StringUtils.hasText(accessToken)) {
-            return accessToken;
-        }
-
-        return null;
+        accessor.setUser(user);
+        return message;
     }
 }

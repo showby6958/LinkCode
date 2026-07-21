@@ -1,15 +1,14 @@
 package com.example.interview.message.controller;
 
-import com.example.common.security.CustomPrincipal;
 import com.example.interview.message.dto.InterviewMessageRequest;
 import com.example.interview.message.dto.InterviewMessageResponse;
 import com.example.interview.message.service.InterviewMessageService;
+import com.example.interview.security.LoginUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
@@ -32,14 +31,14 @@ public class InterviewMessageController {
                 roomId,
                 request.getContent());
 
-        Authentication authentication = (Authentication) principal;
-        CustomPrincipal user = (CustomPrincipal) authentication.getPrincipal();
+        // 채널 인터셉터가 LoginUser를 STOMP principal로 세팅해 둔다.
+        LoginUser user = (LoginUser) principal;
 
         InterviewMessageResponse response = messageService.sendMessage(
                 roomId,
-                user.getUserId(),
-                user.getUserName(),
-                user.getPicture(),
+                user.userId(),
+                user.userName(),
+                user.picture(),
                 request
         );
 

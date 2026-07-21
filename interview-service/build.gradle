@@ -1,14 +1,17 @@
 dependencies {
-    implementation project(':common-module')
+    // common-module 의존 제거: 토큰 검증을 게이트웨이가 담당하고, 사용자 정보는
+    // X-User-* 헤더로 받으므로(security 패키지의 LoginUser 등) 공유 코드가 필요 없다.
+    // 스프링 시큐리티와 jjwt도 제거한다 — interview는 더 이상 토큰을 파싱하지 않는다.
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // 아래 둘은 이전에 common-module이 api로 노출해 딸려오던 것이다.
+    // 의존을 끊으면서 함께 사라지므로 직접 선언한다.
+    implementation 'org.springframework.kafka:spring-kafka'   // 면접 종료 이벤트 발행/분석 결과 수신
+    runtimeOnly 'com.mysql:mysql-connector-j'                 // JPA 드라이버
 }
 
 bootJar { enabled = true }
