@@ -42,7 +42,10 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       # 리스너 3종: CONTROLLER, INTERNAL(컨테이너간), EXTERNAL(호스트)
-      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092
+      # ⚠️ 호스트는 0.0.0.0 이 아니라 빈 값(://:port)으로 둔다. 그래야 CONTROLLER
+      #    리스너(advertised 미지정)의 유도 주소가 0.0.0.0 이 되어 format이 거부되는
+      #    문제를 피한다. (빈 호스트면 0.0.0.0 바인딩 + 호스트명 기반 유도)
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:19092,EXTERNAL://:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
