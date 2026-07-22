@@ -134,6 +134,22 @@ services:
       redis: { condition: service_healthy }
     restart: unless-stopped
 
+  ai-consumer:
+    build:
+      # ⚠️ 별도 레포/디렉터리다. 경로는 compose 파일 기준 상대경로.
+      #    배포 VM에서도 LinkCode 와 ai-consumer 가 형제로 나란히 있어야 빌드된다.
+      #    (레포 결합이 부담되면 미리 빌드한 이미지를 image: 로 참조하는 방식으로 바꾼다)
+      context: ../../ai-consumer
+      dockerfile: Dockerfile
+    container_name: ai-consumer
+    # 웹 포트 없는 Kafka 워커: interview-ended 구독 → Gemini 분석 → interview-analyzed 발행
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      kafka: { condition: service_healthy }
+    restart: unless-stopped
+
   api-gateway:
     build:
       context: .
