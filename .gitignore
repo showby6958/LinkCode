@@ -175,3 +175,6 @@ application.yml
 .env
 mysql_data/
 initdb.d/
+
+# IntelliJ IDE (ignore entire project dir)
+.idea/

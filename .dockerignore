@@ -1,0 +1,36 @@
+# ── Build context 경량화 ──────────────────────────────────
+# 도커 빌드는 Gradle 소스(래퍼/빌드파일/src)만 있으면 되므로
+# 산출물·캐시·IDE·VCS 는 컨텍스트에서 제외한다.
+
+# Gradle 산출물 / 캐시
+**/build/
+build/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+*.iws
+
+# VCS
+.git/
+.gitattributes
+
+# 비밀값 (이미지 빌드 컨텍스트에 절대 넣지 않는다)
+.env
+.env.*
+!.env.example
+
+# 도커 관련 파일 자체는 jar 빌드에 불필요
+docker-compose*.yml
+**/Dockerfile
+.dockerignore
+docker/
+
+# 로그 / OS 부산물
+*.log
+Thumbs.db
+.DS_Store
+
+# 로컬 DB 데이터 볼륨(존재 시)
+mysql_data/
