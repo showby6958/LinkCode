@@ -32,6 +32,21 @@ services:
   ai-consumer:
     mem_limit: 300m
 
+  # ── 프론트엔드(React 정적) ───────────────────────────────────
+  # 같은 오리진에서 서빙 → 쿠키 first-party, CORS 불필요.
+  # ⚠️ 별도 레포(LinkCode-React). ../../crdt-front 형제 디렉터리로 존재해야 빌드된다.
+  # REACT_APP_* 는 빌드 시점에 정적 파일로 구워지므로 도메인이 바뀌면 재빌드해야 한다.
+  frontend:
+    build:
+      context: ../../crdt-front
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE: https://linkcoder.duckdns.org
+        REACT_APP_WS_BASE: wss://linkcoder.duckdns.org
+    container_name: frontend
+    mem_limit: 128m
+    restart: unless-stopped
+
   # ── TLS 리버스 프록시 ────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
@@ -46,6 +61,7 @@ services:
       - certbot_www:/var/www/certbot:ro              # acme-challenge 웹루트(읽기)
     depends_on:
       - api-gateway
+      - frontend
     restart: unless-stopped
 
   certbot:
