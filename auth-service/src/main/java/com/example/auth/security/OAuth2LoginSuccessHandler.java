@@ -4,6 +4,7 @@ import com.example.auth.oauth.userinfo.CustomOAuth2User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -19,6 +20,11 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTemplate<String, String> authRedisTemplate;
     private final JwtUtil jwtUtil;
+
+    // 로그인 성공 후 돌려보낼 프론트 주소. 로컬 기본값, 운영은 FRONTEND_URL 로 주입.
+    // (단일 오리진 배포에서는 https://<도메인> 으로 설정)
+    @Value("${FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -55,6 +61,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         System.out.println("쿠키 생성하고 리다이랙트까지 됨");
 
         // 리다이랙트 - 프론트 callback
-        response.sendRedirect("http://localhost:3000");
+        response.sendRedirect(frontendUrl);
     }
 }
