@@ -1,18 +1,42 @@
-# 운영 오버레이: TLS 리버스 프록시(nginx) + 인증서 자동 갱신(certbot)을 추가한다.
+# 운영 오버레이: TLS 리버스 프록시(nginx) + 인증서 자동 갱신(certbot) + 메모리 제한.
 # base(docker-compose.yml)는 로컬 개발용 그대로 두고, 배포 서버에서만 이 파일을 얹는다.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # ⚠️ 최초 인증서 발급은 docker/nginx/init-letsencrypt.sh 를 한 번 실행해야 한다.
-# ⚠️ 게이트웨이 8080은 base에서 호스트로 노출돼 있으니, 배포 서버 방화벽/보안그룹에서
-#    외부로는 80·443만 열고 8080은 차단할 것(외부가 TLS 우회로 게이트웨이에 직접 붙지 못하게).
+# ⚠️ 게이트웨이 8080은 base에서 호스트로 노출되니, 서버 보안그룹에서 80·443만 열 것.
 
 name: linkcode
 
 services:
+  # ── 메모리 제한 (8GB 호스트 기준) ────────────────────────────
+  # 앱 컨테이너 Dockerfile은 -XX:MaxRAMPercentage=75 라서, 컨테이너에 제한이
+  # 없으면 각 JVM이 호스트 전체(8GB)의 75%를 힙으로 잡으려다 OOM 난다.
+  # 아래 mem_limit 로 JVM이 "제한의 75%"를 힙으로 잡게 한다. (합계 ~5.8GB)
+  mysql:
+    mem_limit: 700m
+  kafka:
+    mem_limit: 1300m
+    environment:
+      KAFKA_HEAP_OPTS: "-Xmx768m -Xms256m"   # 브로커 힙 상한 고정
+  redis:
+    mem_limit: 200m
+  auth-service:
+    mem_limit: 900m        # 힙 ~675m
+  interview-service:
+    mem_limit: 900m        # 힙 ~675m
+  api-gateway:
+    mem_limit: 700m        # 힙 ~525m
+  chat-consumer-service:
+    mem_limit: 700m        # 힙 ~525m
+  ai-consumer:
+    mem_limit: 300m
+
+  # ── TLS 리버스 프록시 ────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
     container_name: nginx
+    mem_limit: 64m
     ports:
       - "80:80"
       - "443:443"
@@ -27,6 +51,7 @@ services:
   certbot:
     image: certbot/certbot
     container_name: certbot
+    mem_limit: 64m
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot
