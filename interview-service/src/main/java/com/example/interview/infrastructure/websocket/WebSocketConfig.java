@@ -48,7 +48,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSoc
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(codeSyncWebSocketHandler, "/ws-code/{roomId}")
-                .setAllowedOrigins("http://localhost:3000", "http://localhost:5500") // 테스트용 전체 허용 (운영 환경에서는 프론트 도메인만 지정)
+                // Origin 검증은 게이트웨이가 담당하므로 여기선 전 오리진 허용한다.
+                // (localhost만 허용하면 배포 도메인에서 핸드셰이크가 403으로 거부됨 — chat /ws 와 동일하게 맞춤)
+                .setAllowedOriginPatterns("*")
                 .addInterceptors(new WebSocketHandshakeInterceptor());
     }
 }
