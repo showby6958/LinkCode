@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/interview/reports")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class InterviewReportController {
 
     private final InterviewReportService reportService;
