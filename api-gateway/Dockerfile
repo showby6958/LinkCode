@@ -11,7 +11,7 @@ COPY . .
 
 # 이 모듈의 실행 가능한 부트 jar만 빌드. 테스트는 이미지 빌드에서 제외(CI에서 별도).
 # --mount=type=cache: 빌드 간 Gradle 의존성 캐시를 재사용한다(BuildKit 필요).
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
     chmod +x gradlew && ./gradlew :api-gateway:bootJar --no-daemon -x test
 
 # ─────────────────────────── runtime stage ─────────────────────────
