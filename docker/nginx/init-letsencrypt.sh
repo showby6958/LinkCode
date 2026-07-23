@@ -13,9 +13,9 @@
 set -euo pipefail
 
 # ── 배포 전 값 확인/교체 ──────────────────────────────
-domain="api.example.com"          # ⚠️ 실제 백엔드 도메인 (api.conf 와 동일해야 함)
-email="you@example.com"           # ⚠️ 만료 알림 받을 이메일
-staging=0                         # 1로 두면 LE 스테이징(테스트, 레이트리밋 회피). 성공 확인 후 0으로.
+domain="linkcoder.duckdns.org"          # ⚠️ 실제 도메인 (api.conf·compose 와 동일해야 함)
+email="you@example.com"           # ⚠️ 서버에서 본인 이메일로 교체 (만료 알림용)
+staging=1                         # 첫 발급은 1(스테이징)로 테스트 → 성공 후 0으로 바꿔 실발급.
 # ─────────────────────────────────────────────────────
 
 compose="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
