@@ -1,0 +1,39 @@
+# 운영 오버레이: TLS 리버스 프록시(nginx) + 인증서 자동 갱신(certbot)을 추가한다.
+# base(docker-compose.yml)는 로컬 개발용 그대로 두고, 배포 서버에서만 이 파일을 얹는다.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# ⚠️ 최초 인증서 발급은 docker/nginx/init-letsencrypt.sh 를 한 번 실행해야 한다.
+# ⚠️ 게이트웨이 8080은 base에서 호스트로 노출돼 있으니, 배포 서버 방화벽/보안그룹에서
+#    외부로는 80·443만 열고 8080은 차단할 것(외부가 TLS 우회로 게이트웨이에 직접 붙지 못하게).
+
+name: linkcode
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro   # 서버 설정
+      - letsencrypt:/etc/letsencrypt:ro              # 인증서(읽기)
+      - certbot_www:/var/www/certbot:ro              # acme-challenge 웹루트(읽기)
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # 12시간마다 갱신 시도(만료 30일 이내에만 실제 갱신). 최초 발급은 init 스크립트로.
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'
+    restart: unless-stopped
+
+volumes:
+  letsencrypt:
+  certbot_www:
