@@ -24,14 +24,10 @@ git -C "$FRONT_DIR"    pull --ff-only
 
 cd "$LINKCODE_DIR"
 
-echo "==> [2/4] 이미지 빌드 + 기동 (변경분만 캐시 재사용)"
+echo "==> [2/3] 이미지 빌드 + 기동 (변경분만 캐시 재사용)"
 $DC up -d --build
 
-echo "==> [3/4] nginx 재시작 (업스트림 IP 재해석 → 502 방지)"
-# P4(resolver) 적용 후에는 이 줄을 지워도 된다.
-$DC restart nginx
-
-echo "==> [4/4] 상태"
+echo "==> [3/3] 상태"
 $DC ps
 
 echo "==> 배포 완료"
