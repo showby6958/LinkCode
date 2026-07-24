@@ -1,0 +1,38 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    # 호스트/포트/계정은 환경변수로 (기본값 localhost). 컨테이너에서는 DB_HOST=mysql로 덮어쓴다.
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/linkcodeconsumer?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+
+  Kafka:
+    # 컨테이너에서는 KAFKA_BOOTSTRAP=kafka:19092(INTERNAL 리스너)로 덮어쓴다.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+      auto-offset-reset: earliest
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+slack:
+  webhook:
+    # 웹훅 URL은 .env 로만 주입.
+    url: ${SLACK_WEBHOOK_URL}
+
+# JWT 서명 시크릿. 컴포넌트 스캔되는 JwtTokenProvider 빈 때문에 이 컨슈머도 기동 시 필요. .env 로만 주입.
+jwt:
+  secret: ${JWT_SECRET}

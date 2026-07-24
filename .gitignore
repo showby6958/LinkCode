@@ -170,8 +170,9 @@ gradle-app.setting
 # End of https://www.toptal.com/developers/gitignore/api/java,intellij,gradle
 
 # Custom Security Configurations
+# application.yml 은 이제 비밀값을 담지 않고 ${VAR} 로만 참조하므로 커밋한다.
+# 실제 비밀값은 .env 에만 둔다(아래).
 application-prod.yml
-application.yml
 .env
 mysql_data/
 initdb.d/

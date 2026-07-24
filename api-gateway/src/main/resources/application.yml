@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+# 라우팅 대상 서비스 주소. 컨테이너에서는 서비스 이름으로 덮어쓴다.
+#   AUTH_URI=http://auth-service:8081  INTERVIEW_URI=http://interview-service:8083
+services:
+  auth-uri: ${AUTH_URI:http://localhost:8081}
+  interview-uri: ${INTERVIEW_URI:http://localhost:8083}
+
+gateway:
+  # auth-service가 공개하는 JWK Set 주소.
+  # 컨테이너에서는 GATEWAY_JWKS_URI=http://auth-service:8081/... 로 덮어쓴다.
+  jwks-uri: ${GATEWAY_JWKS_URI:http://localhost:8081/oauth/.well-known/jwks.json}
+  cors:
+    # 프론트 주소. 쉼표로 여러 개 지정 가능.
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
