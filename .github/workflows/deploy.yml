@@ -5,8 +5,10 @@ name: CI/CD
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']    # 문서만 바뀌면 배포 스킵
   pull_request:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
 
 # 동시에 여러 배포가 겹치지 않게 직렬화한다.
 concurrency:

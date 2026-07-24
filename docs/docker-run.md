@@ -3,7 +3,8 @@
 백엔드 전체(게이트웨이·auth·interview·chat-consumer)와 인프라(MySQL·Kafka·Redis)를
 Docker Compose로 한 번에 띄우는 방법. **IntelliJ에서 서비스별 bootRun 하던 것을 대체**한다.
 
-> 프론트(`crdt-front`)와 `ai-consumer`는 이 compose에 포함되지 않는다(각자 별도 실행).
+> `ai-consumer`(Gemini 분석 워커)도 이 base compose에 포함된다(`../../ai-consumer` 레포 필요).
+> 프론트(`crdt-front`)만 별도 — 로컬 개발은 따로 실행하고, 배포는 nginx가 같은 오리진으로 함께 서빙한다(→ `docs/tls-nginx.md`).
 
 ---
 
@@ -15,6 +16,7 @@ Docker Compose로 한 번에 띄우는 방법. **IntelliJ에서 서비스별 boo
 | auth-service | 8081:8081 | mysql, kafka, redis | OAuth2 · RS256 JWKS |
 | interview-service | 8083:8083 | mysql, kafka, redis | HTTP + WebSocket |
 | chat-consumer-service | (없음, port=0) | mysql, kafka, redis | Kafka 소비 + Slack |
+| ai-consumer | (없음) | kafka | Gemini 분석 워커 (interview-ended→analyzed), `GEMINI_API_KEY` 필요 |
 | mysql | 3306:3306 | — | DB 3개 자동 생성 |
 | kafka | 9092:9092 | — | KRaft, 내부 `kafka:19092` |
 | redis | 6379:6379 | — | |
@@ -114,8 +116,8 @@ docker compose up -d --build
 
 ## 알아둘 점
 
-- **AI 분석 미동작**: 인터뷰 분석 결과(`interview-analyzed`)는 별도 `ai-consumer`가 있어야 온다.
-  이 스코프엔 없으므로 분석 결과는 오지 않음(로그인·코드동기화 등 나머지는 정상).
+- **AI 분석 동작**: `ai-consumer`(Gemini)가 base compose에 포함돼 인터뷰 분석이 돌아온다.
+  `../../ai-consumer` 레포가 형제 디렉터리에 있어야 빌드되며, `.env`에 `GEMINI_API_KEY` 필요.
 - **Kafka는 개발용 ephemeral**: 영속 볼륨 없이 동작. 재기동 시 토픽/오프셋 초기화.
 - **비밀값**: 실제 값은 `.env`(gitignore)에만. 이미지/커밋에 노출 금지.
 - **하이브리드 개발**: 특정 서비스만 IDE로 디버깅하려면, 인프라(mysql·kafka·redis)만
