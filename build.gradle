@@ -41,3 +41,9 @@ subprojects {
 		implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	}
 }
+
+// 루트 프로젝트는 애플리케이션이 아니라 서브프로젝트 집계용이다. boot 플러그인이
+// 붙어 bootJar 태스크가 생기는데, 루트엔 main 클래스가 없어 `gradle build` 시 실패한다.
+// 실행 아티팩트를 만들지 않도록 끈다. (각 서비스의 bootJar 는 그대로 동작)
+tasks.named('bootJar') { enabled = false }
+tasks.named('jar') { enabled = false }
